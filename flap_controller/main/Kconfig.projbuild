@@ -1,27 +1,37 @@
 menu "Flap Controller"
     orsource "$IDF_PATH/examples/common_components/env_caps/$IDF_TARGET/Kconfig.env_caps"
 
-    config PWM_IN_GPIO
-        int "input PWM pin"
+    config PWM_CH1_IN_GPIO
+        int "PWM Channel 1 input pin"
         range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
         default 26
 
-    config PWM_IN_TEST_GPIO
-        int "input PWM test pin"
-        range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
-        default 27
-
-    config PWM_OUT_GPIO
-        int "input PWM pin"
-        range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
-        default 23
-
-    config PWM_OUT_TEST_GPIO
-        int "output PWM test pin"
+    config PWM_CH1_OUT_GPIO
+        int "PWM Channel 1 output pin"
         range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
         default 22
 
-    config PWM_FREQUENCY
+    config PWM_CH2_IN_GPIO
+        int "PWM Channel 2 input pin"
+        range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+        default 25
+
+    config PWM_CH2_OUT_GPIO
+        int "PWM Channel 2 output pin"
+        range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+        default 23
+
+    config PWM_TEST_IN_GPIO
+        int "PWM test channel input pin"
+        range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+        default 21
+
+    config PWM_TEST_OUT_GPIO
+        int "PWM test channel output pin"
+        range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+        default 27
+
+    config DEFAULT_PWM_FREQUENCY
 	int "PWM frequency (HZ)"
 	default 100
 endmenu
