@@ -1,6 +1,6 @@
 idf_component_register(SRCS
 			"main.c"
-			"pwm.c"
+			"signal.c"
 			"wifi.c"
-			"settings.c"
+			"values.c"
                     INCLUDE_DIRS "")

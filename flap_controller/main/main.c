@@ -4,10 +4,11 @@
 #include "driver/gpio.h"
 #include "esp_system.h"
 #include "driver/uart.h"
-#include "pwm.h"
-#include "settings.h"
+
+#include "signal.h"
+#include "values.h"
 
 void app_main(void) {
-	settings_init();
-	pwm_init();
+	values_init();
+	signals_init();
 }
