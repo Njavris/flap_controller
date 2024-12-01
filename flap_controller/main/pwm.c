@@ -7,6 +7,25 @@
 
 #include "pwm.h"
 
+
+struct pwm_dev {
+	bool en_out;
+	bool en_in;
+	uint32_t gpio_out;
+	ledc_channel_t out_ch;
+	ledc_timer_t out_tmr;
+	uint32_t freq;
+	uint32_t pwm;
+	uint32_t gpio_in;
+	QueueHandle_t pwm_val_queue;
+};
+
+
+static int pwm_dev_init(struct pwm_dev *dev, uint32_t gpio_in,
+		uint32_t gpio_out, bool en_out, bool en_in, uint32_t freq);
+static uint32_t pwm_in_edge_measure(struct pwm_dev *dev, uint32_t timeout);
+static void pwm_out_set_duty(struct pwm_dev *dev, uint32_t duty);
+
 static void pwm_out_init(struct pwm_dev *dev) {
 	static ledc_channel_t ch = LEDC_CHANNEL_0;
 
@@ -41,15 +60,14 @@ static void pwm_out_init(struct pwm_dev *dev) {
 	ch ++;
 }
 
-void pwm_out_set_duty(struct pwm_dev *dev, uint32_t duty) {
+static void pwm_out_set_duty(struct pwm_dev *dev, uint32_t duty) {
 	duty = ((1 << 10) * duty) / 100;
 	ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, dev->out_ch, duty));
 	ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, dev->out_ch));
 }
 
 
-static bool pwm_cap_cb(mcpwm_cap_channel_handle_t cap_chan, const mcpwm_capture_event_data_t *edata, void *user_data)
-{
+static bool pwm_cap_cb(mcpwm_cap_channel_handle_t cap_chan, const mcpwm_capture_event_data_t *edata, void *user_data) {
 	static uint32_t rise = 0;
 	static uint32_t fall = 0;
 	static uint32_t rise_delta = 0;
@@ -69,8 +87,7 @@ static bool pwm_cap_cb(mcpwm_cap_channel_handle_t cap_chan, const mcpwm_capture_
 	return wakeup == pdTRUE;
 }
 
-static void pwm_in_task(void *arg)
-{
+static void pwm_in_task(void *arg) {
 	static int group_id = 0;
 	uint32_t gpio = *(uint32_t *)arg;
 	TaskHandle_t cur_task = xTaskGetCurrentTaskHandle();
@@ -160,18 +177,20 @@ static void pwm_in_edge_setup(struct pwm_dev *dev) {
 	dev->pwm_val_queue = xQueueCreate(1, sizeof(uint32_t));
 }
 
-uint32_t pwm_in_edge_measure(struct pwm_dev *dev, uint32_t timeout) {
+static uint32_t pwm_in_edge_measure(struct pwm_dev *dev, uint32_t timeout) {
 	uint32_t ret = 0;
 	if (!dev->en_in)
 		return ret;
 	gpio_isr_handler_add(dev->gpio_in, gpio_isr_handler, (void *)dev);
 	gpio_set_intr_type(dev->gpio_in, GPIO_INTR_ANYEDGE);
-	if (xQueueReceive(dev->pwm_val_queue, &ret, timeout))
+	if (xQueueReceive(dev->pwm_val_queue, &ret, timeout)) {
+		vTaskDelay(10);
 		return ret;
+	}
 	return ret;
 }
 
-int pwm_dev_init(struct pwm_dev *dev, uint32_t gpio_in,
+static int pwm_dev_init(struct pwm_dev *dev, uint32_t gpio_in,
 		uint32_t gpio_out, bool en_out, bool en_in, uint32_t freq) {
 	int ret = 0;
 	memset(dev, 0, sizeof(struct pwm_dev));
@@ -186,4 +205,48 @@ int pwm_dev_init(struct pwm_dev *dev, uint32_t gpio_in,
 	if (dev->en_out)
 		pwm_out_init(dev);
 	return ret;
+}
+
+static void pwm_task(void *arg) {
+	struct pwm_dev pwm_1;
+	struct pwm_dev pwm_2;
+//	struct pwm_dev pwm_test;
+	uint32_t ch1_pwm_in, ch2_pwm_in;
+	uint32_t ch1_pwm_out, ch2_pwm_out;
+	uint32_t ch1_override, ch2_override;
+
+	pwm_dev_init(&pwm_1,
+		CONFIG_PWM_CH1_IN_GPIO,
+		CONFIG_PWM_CH1_OUT_GPIO,
+		true, true,
+		CONFIG_DEFAULT_PWM_FREQUENCY);
+
+	pwm_dev_init(&pwm_2,
+		CONFIG_PWM_CH2_IN_GPIO,
+		CONFIG_PWM_CH2_OUT_GPIO,
+		true, true,
+		CONFIG_DEFAULT_PWM_FREQUENCY);
+
+//	pwm_dev_init(&pwm_test,
+//		CONFIG_PWM_TEST_IN_GPIO,
+//		CONFIG_PWM_TEST_OUT_GPIO,
+//		true, true,
+//		CONFIG_DEFAULT_PWM_FREQUENCY);
+	for (;;) {
+		uint32_t prev_ch1_out = ch1_pwm_out;
+		uint32_t prev_ch2_out = ch2_pwm_out;
+		ch1_pwm_in = pwm_in_edge_measure(&pwm_1, 50);
+		ch2_pwm_in = pwm_in_edge_measure(&pwm_2, 50);
+
+		vTaskDelay(100);
+		if (ch1_override && prev_ch1_out != ch1_pwm_out)
+			pwm_out_set_duty(&pwm_1, ch1_pwm_out);
+		if (ch2_override && prev_ch2_out != ch2_pwm_out)
+			pwm_out_set_duty(&pwm_2, ch2_pwm_out);
+		vTaskDelay(1000);
+	}
+}
+
+void pwm_init(void) {
+	xTaskCreate(pwm_task, "PWM_task", 4096, NULL, 17, NULL);
 }
