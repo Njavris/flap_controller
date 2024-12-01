@@ -230,17 +230,19 @@ static void pwm_task(void *arg) {
 
 	ch1_in = pwm_in_edge_measure(&pwm_1, 50);
 	ch2_in = pwm_in_edge_measure(&pwm_2, 50);
+	set_value(e_nvs_ch1_in, &ch1_in, sizeof(ch1_in));
+	set_value(e_nvs_ch2_in, &ch2_in, sizeof(ch2_in));
 
-	get_value(e_nvs_ch1_dty, &ch1_out, sizeof(ch1_out));
-	get_value(e_nvs_ch2_dty, &ch2_out, sizeof(ch2_out));
+	get_value(e_nvs_ch1_dty, &ch1_out, NULL);
+	get_value(e_nvs_ch2_dty, &ch2_out, NULL);
 
 	for (;;) {
 		uint32_t tmp_ch1_out = ch1_out;
 		uint32_t tmp_ch2_out = ch2_out;
 		uint32_t tmp_ch1_in = ch1_in;
 		uint32_t tmp_ch2_in = ch2_in;
-		get_value(e_nvs_ch1_src, &ch1_override, sizeof(ch1_override));
-		get_value(e_nvs_ch2_src, &ch2_override, sizeof(ch2_override));
+		get_value(e_nvs_ch1_src, &ch1_override, NULL);
+		get_value(e_nvs_ch2_src, &ch2_override, NULL);
 
 		tmp_ch1_in = pwm_in_edge_measure(&pwm_1, 50);
 		if (tmp_ch1_in != ch1_in) {
@@ -256,14 +258,14 @@ static void pwm_task(void *arg) {
 		vTaskDelay(10);
 
 		if (ch1_override) {
-			get_value(e_nvs_ch1_dty, &tmp_ch1_out, sizeof(ch1_out));
+			get_value(e_nvs_ch1_dty, &tmp_ch1_out, NULL);
 			if (tmp_ch1_out != ch1_out) {
 				pwm_out_set_duty(&pwm_1, tmp_ch1_out);
 				ch1_out = tmp_ch1_out;
 			}
 		}
 		if (ch2_override) {
-			get_value(e_nvs_ch2_dty, &tmp_ch2_out, sizeof(ch2_out));
+			get_value(e_nvs_ch2_dty, &tmp_ch2_out, NULL);
 			if (tmp_ch2_out != ch2_out) {
 				pwm_out_set_duty(&pwm_2, tmp_ch2_out);
 				ch2_out = tmp_ch2_out;
